@@ -27,14 +27,17 @@ const TrainingList = () => {
   };
 
   return (
-    <div>
-      <h2>Meus Treinamentos</h2>
-      {trainings.map((t) => (
-        <div key={t.id}>
-          <h3>{t.treinamento.nome} - {t.nome}</h3>
+<div>
+  <h2>Meus Treinamentos</h2>
+  {trainings.map((treinamento) => (
+    <div key={treinamento.id}>
+      <h3>{treinamento.nome}</h3>
+      {treinamento.turmas.map((turma) => (
+        <div key={turma.id}>
+          <h4>Turma: {turma.nome}</h4>
           <ul>
-            {t.recursos.map((r) => (
-              canAccessResource(t, r) ? (
+            {turma.recursos.map((r) =>
+              canAccessResource(turma, r) ? (
                 <li key={r.id}>
                   <ResourceViewer resource={r} />
                 </li>
@@ -43,11 +46,14 @@ const TrainingList = () => {
                   🔒 Recurso indisponível até o início da turma
                 </li>
               )
-            ))}
+            )}
           </ul>
         </div>
       ))}
     </div>
+  ))}
+</div>
+
   );
 };
 

@@ -15,6 +15,19 @@ class RecursoSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.arquivo.url)
         return None
 
+    def create(self, validated_data):
+        """
+        Cria o recurso corretamente e salva o arquivo no MEDIA_ROOT.
+        """
+        # ⚙️ Cria o objeto do modelo, não do serializer!
+        recurso = Recurso.objects.create(**validated_data)
+
+        print("✅ Recurso criado com sucesso:", recurso)
+        print("📂 Caminho do arquivo salvo:", recurso.arquivo.path if recurso.arquivo else "Nenhum arquivo")
+
+        return recurso
+
+
 
 class TurmaSerializer(serializers.ModelSerializer):
     treinamento = serializers.PrimaryKeyRelatedField(queryset=Treinamento.objects.all())
@@ -36,6 +49,7 @@ class TurmaSerializer(serializers.ModelSerializer):
             'recursos',
             'alunos',
             'alunos_matriculados',
+            'criado_por',
         ]
 
     def get_alunos_matriculados(self, obj):

@@ -15,6 +15,10 @@ urlpatterns = [
     path('alunos/', views.AlunoListView.as_view(), name='aluno-list'),
     path('turmas/', views.TurmaListView.as_view(), name='turma-list'),
     path('turmas/cadastro/', views.TurmaViewSet.as_view({'post': 'create'}), name='turma-create'),
+    path('turmas/<int:turma_id>/detalhes/', views.TurmaDetalheView.as_view(), name='turma_detalhes'),
+    path("turmas/<int:turma_id>/editar/", views.TurmaUpdateView.as_view(), name="editar_turma"),
+    path("turmas/usuario/<int:user_id>/", views.TurmasPorUsuarioView.as_view(), name="turmas-usuario"),
+
     path('recursos/', views.RecursoListView.as_view(), name='recurso-list'),
     path('recursos/cadastro/', views.RecursoViewSet.as_view({'post': 'create'}), name='recurso-create'),
 ]

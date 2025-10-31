@@ -131,16 +131,12 @@ const Turmas = () => {
                 required
               />
             </div>
-
-            {/* Botão */}
             <div className="col-md-2 d-grid">
               <button type="submit" className="btn btn-primary">
                 Salvar
               </button>
             </div>
           </div>
-
-          {/* Seleção de alunos */}
           <div className="mt-4">
             <label className="form-label">Alunos</label>
             <select
@@ -190,6 +186,11 @@ const Turmas = () => {
                   </td>
                   <td>{t.data_inicio}</td>
                   <td>{t.data_conclusao}</td>
+                  <td>
+                    <a href={`/turmas/${t.id}/detalhes`} className="btn btn-outline-primary btn-sm">
+                      Ver Detalhes
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

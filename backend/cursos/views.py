@@ -3,6 +3,8 @@ from rest_framework import generics, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+
 from .models import Aluno, Matricula, Treinamento, Turma, Recurso
 from .serializers import (
     TreinamentoSerializer,
@@ -16,6 +18,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+User = get_user_model()
 
 # =========================================================
 # 🔐 AUTENTICAÇÃO
@@ -95,30 +98,7 @@ class RecursoListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        today = timezone.now().date()
-
-        matriculas = Matricula.objects.filter(aluno=user).select_related(
-            "turma__treinamento"
-        )
-
-        accessible_resource_ids = set()
-
-        for matricula in matriculas:
-            turma = matricula.turma
-            recursos_turma = Recurso.objects.filter(turma=turma)
-
-            for recurso in recursos_turma:
-                # Regra 2: Antes da data de início, só acesso_previo=True
-                if today < turma.data_inicio:
-                    if recurso.acesso_previo:
-                        accessible_resource_ids.add(recurso.id)
-                # Regra 3: Após (ou na) data de início, só se draft=False
-                else:
-                    if not recurso.draft:
-                        accessible_resource_ids.add(recurso.id)
-
-        return Recurso.objects.filter(id__in=accessible_resource_ids)
+        return Recurso.objects.all()
 
 
 # =========================================================
@@ -145,6 +125,39 @@ class TurmaViewSet(viewsets.ModelViewSet):
     queryset = Turma.objects.all()
     serializer_class = TurmaSerializer
     permission_classes = [IsAdminOrReadOnly]
+    
+    def perform_create(self, serializer):
+        serializer.save(criado_por=self.request.user)
+    
+class TurmaDetalheView(APIView):
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get(self, request, turma_id):
+        print("Usuário autenticado:", request.user)
+
+        try:
+            turma = Turma.objects.get(id=turma_id)
+        except Turma.DoesNotExist:
+            return Response({"detail": "Turma não encontrada."}, status=404)
+
+        if (
+            request.user != turma.criado_por
+            and not turma.matriculas.filter(aluno=request.user).exists()
+        ):
+            return Response({"detail": "Acesso negado."}, status=403)
+
+        recursos = Recurso.objects.filter(turma=turma)
+
+        turma_data = TurmaSerializer(turma).data
+        recursos_data = RecursoSerializer(
+            recursos, many=True, context={"request": request}
+        ).data
+
+        return Response({
+            "turma": turma_data,
+            "recursos": recursos_data,
+            "meet_link": turma.meet_link if hasattr(turma, "meet_link") else None,
+        })
 
 
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -157,7 +170,7 @@ class RecursoViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Corrige os valores booleanos vindos do FormData (que chegam como string).
+        Corrige valores booleanos e garante upload correto de arquivo.
         """
         data = self.request.data
 
@@ -171,14 +184,69 @@ class RecursoViewSet(viewsets.ModelViewSet):
         acesso_previo = parse_bool(data.get("acesso_previo"))
         draft = parse_bool(data.get("draft"))
 
+        arquivo = data.get("arquivo", None)
+
         serializer.save(
             acesso_previo=acesso_previo,
             draft=draft,
+            arquivo=arquivo  
         )
 
-# views.py
+ 
+            
 class AlunoListView(generics.ListAPIView):
     queryset = Aluno.objects.all()
-    print("Listando alunos", queryset)
     serializer_class = AlunoSerializer
     permission_classes = [IsAuthenticated]
+
+class TurmasPorUsuarioView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        # Filtra turmas em que o usuário está matriculado
+        turmas = Turma.objects.filter(matriculas__aluno_id=user_id).distinct()
+        serializer = TurmaSerializer(turmas, many=True)
+        return Response(serializer.data)
+
+    
+class TurmaUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, turma_id):
+        try:
+            turma = Turma.objects.get(id=turma_id)
+        except Turma.DoesNotExist:
+            return Response({"detail": "Turma não encontrada."}, status=404)
+
+        # 🔒 Somente o criador da turma pode editar
+        if request.user != turma.criado_por:
+            return Response({"detail": "Apenas o criador pode editar esta turma."}, status=403)
+
+        # Atualizar nome, datas etc.
+        serializer = TurmaSerializer(turma, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+        else:
+            return Response(serializer.errors, status=400)
+
+        # ✅ Adicionar alunos
+        alunos_ids = request.data.get("alunos_ids", [])
+        if alunos_ids:
+            for aluno_id in alunos_ids:
+                aluno = User.objects.filter(id=aluno_id).first()
+                if aluno and not turma.matriculas.filter(aluno=aluno).exists():
+                    Matricula.objects.create(aluno=aluno, turma=turma)
+
+        # ✅ Adicionar recursos
+        recursos = request.data.get("recursos", [])
+        for recurso in recursos:
+            Recurso.objects.create(
+                nome=recurso.get("nome"),
+                descricao=recurso.get("descricao"),
+                turma=turma,
+                arquivo=recurso.get("arquivo"),
+                url=recurso.get("url"),
+                criado_por=request.user,
+            )
+
+        return Response({"detail": "Turma atualizada com sucesso!"}, status=200)

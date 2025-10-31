@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
+from django.conf import settings
+
 
 class Treinamento(models.Model):
     nome = models.CharField(max_length=150)
@@ -16,7 +18,11 @@ class Turma(models.Model):
     data_inicio = models.DateField()
     data_conclusao = models.DateField(blank=True, null=True)
     link_acesso = models.URLField(max_length=300, blank=True, null=True)
-
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="turmas_criadas"
+    )
     def __str__(self):
         return f"{self.nome} - {self.treinamento.nome}"
 
@@ -83,6 +89,7 @@ class Matricula(models.Model):
 
     class Meta:
         unique_together = ("turma", "aluno")
+        verbose_name = "Matrícula"
         verbose_name_plural = "Matrículas"
 
     def __str__(self):

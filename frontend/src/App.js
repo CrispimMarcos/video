@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Treinamentos from "./pages/admin/Treinamentos";
 import Turmas from "./pages/admin/Turmas";
 import Recursos from "./pages/admin/Recursos";
+import TurmaDetalhe from "./pages/TurmaDetalhe";
 
 // Rota protegida
 const ProtectedRoute = ({ children }) => {
@@ -31,6 +32,7 @@ function App() {
       <Route path="/admin/treinamentos" element={<Treinamentos />} />
       <Route path="/admin/turmas" element={<Turmas />} />
       <Route path="/admin/recursos" element={<Recursos />} />
+      <Route path="/turmas/:id/detalhes" element={<TurmaDetalhe />} />
     </Routes>
   );
 }

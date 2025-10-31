@@ -52,8 +52,8 @@ const Recursos = () => {
       formData.append("acesso_previo", form.acesso_previo);
       formData.append("draft", form.draft);
 
-      if (form.url) formData.append("url", form.url);
-      if (form.arquivo) formData.append("arquivo", form.arquivo);
+      formData.append("url", form.url);
+      formData.append("arquivo", form.arquivo);
 
       await api.post("/recursos/cadastro/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
